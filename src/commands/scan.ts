@@ -121,10 +121,10 @@ export async function scan(args: string[]): Promise<void> {
         .sort(([, a], [, b]) => b - a)
         .filter(([v]) => v !== group) // don't repeat the group name itself
         .slice(0, 15)
-        .map(([v, c]) => `${v} ${c}x`)
+        .map(([v, c]) => `${v} ${c}`)
         .join(", ");
       const suffix = variantList ? ` (${variantList})` : "";
-      console.log(`    ${group.padEnd(12)} ${String(count).padStart(4)}x${suffix}`);
+      console.log(`    ${group.padEnd(12)} ${String(count).padStart(4)}${suffix}`);
     }
   }
 
