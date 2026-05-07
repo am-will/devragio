@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "no-unused-vars": "error",
+    "eqeqeq": "error",
+    "prefer-const": "error",
+    "curly": "error"
+  }
+}
