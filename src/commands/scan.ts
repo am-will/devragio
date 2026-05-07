@@ -120,7 +120,7 @@ export async function scan(args: string[]): Promise<void> {
       const variantList = Object.entries(variants)
         .sort(([, a], [, b]) => b - a)
         .filter(([v]) => v !== group) // don't repeat the group name itself
-        .slice(0, 5)
+        .slice(0, 15)
         .map(([v, c]) => `${v} ${c}x`)
         .join(", ");
       const suffix = variantList ? ` (${variantList})` : "";
