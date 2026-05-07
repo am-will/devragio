@@ -44,6 +44,7 @@ export async function scan(args: string[]): Promise<void> {
     : allAdapters();
 
   const groupTally: Record<string, number> = {};
+  const variantTally: Record<string, Record<string, number>> = {};
   const severityCounts: Record<Severity, number> = {
     mild: 0,
     moderate: 0,
@@ -69,6 +70,10 @@ export async function scan(args: string[]): Promise<void> {
         for (const match of result.matches) {
           groupTally[match.group] = (groupTally[match.group] ?? 0) + 1;
           severityCounts[match.severity]++;
+
+          if (!variantTally[match.group]) variantTally[match.group] = {};
+          variantTally[match.group][match.word] =
+            (variantTally[match.group][match.word] ?? 0) + 1;
         }
       }
     }
@@ -111,7 +116,15 @@ export async function scan(args: string[]): Promise<void> {
     console.log("");
     console.log("  top words:");
     for (const [group, count] of sorted.slice(0, 10)) {
-      console.log(`    ${group.padEnd(15)} ${count}x`);
+      const variants = variantTally[group] ?? {};
+      const variantList = Object.entries(variants)
+        .sort(([, a], [, b]) => b - a)
+        .filter(([v]) => v !== group) // don't repeat the group name itself
+        .slice(0, 5)
+        .map(([v, c]) => `${v} ${c}x`)
+        .join(", ");
+      const suffix = variantList ? ` (${variantList})` : "";
+      console.log(`    ${group.padEnd(12)} ${String(count).padStart(4)}x${suffix}`);
     }
   }
 
