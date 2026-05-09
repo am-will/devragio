@@ -1,6 +1,21 @@
 import { allAdapters, createAdapter } from "../adapters/index";
 import { detect } from "../detector/index";
 
+// ANSI color helpers — no dependencies needed
+const c = {
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  dim: "\x1b[2m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
+  magenta: "\x1b[35m",
+  cyan: "\x1b[36m",
+  white: "\x1b[37m",
+  gray: "\x1b[90m",
+};
+
 const SPINNER_MESSAGES = [
   "Tallying the damage",
   "Reviewing your outbursts",
@@ -26,7 +41,9 @@ function createSpinner() {
         dotCount = (dotCount + 1) % 4;
         const msg = SPINNER_MESSAGES[messageIdx % SPINNER_MESSAGES.length];
         const dots = ".".repeat(dotCount || 1);
-        process.stdout.write(`\r  ${msg}${dots}   `);
+        process.stdout.write(
+          `\r  ${c.dim}${msg}${dots}${c.reset}   `,
+        );
       }, 300);
     },
     update() {
@@ -126,22 +143,21 @@ export async function scan(args: string[]): Promise<void> {
 
   // Report
   console.log("");
-  console.log("  devrage report");
-  console.log("  ===============");
+  console.log(`  ${c.bold}${c.red}devrage${c.reset} ${c.dim}report${c.reset}`);
+  console.log(`  ${c.dim}${"─".repeat(30)}${c.reset}`);
   console.log("");
-  console.log(`  messages scanned:  ${totalMessages}`);
-  console.log(`  total swears:      ${totalSwears}`);
-
-
+  console.log(`  ${c.dim}messages scanned${c.reset}  ${c.bold}${totalMessages}${c.reset}`);
+  console.log(`  ${c.dim}total swears${c.reset}      ${c.bold}${c.red}${totalSwears}${c.reset}`);
 
   const activeAgents = Object.entries(perAgent);
   if (activeAgents.length > 1) {
     console.log("");
-    console.log("  by agent:");
+    console.log(`  ${c.bold}by agent${c.reset}`);
     for (const [name, stats] of activeAgents) {
       const rate = ((stats.swears / stats.messages) * 100).toFixed(1);
+      const bar = renderBar(stats.swears, activeAgents[0]?.[1]?.swears ?? 1);
       console.log(
-        `    ${name.padEnd(10)} ${String(stats.swears).padStart(4)} swears in ${stats.messages} messages (${rate}%)`,
+        `    ${c.cyan}${name.padEnd(10)}${c.reset} ${bar} ${c.bold}${String(stats.swears).padStart(4)}${c.reset} ${c.dim}in ${stats.messages} messages (${rate}%)${c.reset}`,
       );
     }
   }
@@ -149,23 +165,32 @@ export async function scan(args: string[]): Promise<void> {
   if (totalSwears > 0) {
     const sorted = Object.entries(groupTally).sort(([, a], [, b]) => b - a);
     console.log("");
-    console.log("  top words:");
+    console.log(`  ${c.bold}top words${c.reset}`);
     for (const [group, count] of sorted.slice(0, 10)) {
       const variants = variantTally[group] ?? {};
       const variantList = Object.entries(variants)
         .sort(([, a], [, b]) => b - a)
-        .filter(([v]) => v !== group) // don't repeat the group name itself
+        .filter(([v]) => v !== group)
         .slice(0, 15)
-        .map(([v, c]) => `${v} ${c}`)
-        .join(", ");
-      const suffix = variantList ? ` (${variantList})` : "";
-      console.log(`    ${group.padEnd(12)} ${String(count).padStart(4)}${suffix}`);
+        .map(([v, cnt]) => `${c.dim}${v}${c.reset} ${cnt}`)
+        .join(`${c.dim},${c.reset} `);
+      const suffix = variantList ? ` ${c.dim}(${c.reset}${variantList}${c.dim})${c.reset}` : "";
+      console.log(
+        `    ${c.yellow}${group.padEnd(12)}${c.reset} ${c.bold}${String(count).padStart(4)}${c.reset}${suffix}`,
+      );
     }
   }
 
   console.log("");
   if (totalSwears === 0) {
-    console.log("  squeaky clean! not a single swear found.");
+    console.log(`  ${c.green}squeaky clean! not a single swear found.${c.reset}`);
     console.log("");
   }
+}
+
+function renderBar(value: number, max: number): string {
+  const width = 12;
+  const filled = Math.round((value / max) * width);
+  const bar = "█".repeat(filled) + "░".repeat(width - filled);
+  return `${c.red}${bar}${c.reset}`;
 }
