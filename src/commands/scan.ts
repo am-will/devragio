@@ -155,9 +155,8 @@ export async function scan(args: string[]): Promise<void> {
     console.log(`  ${c.bold}by agent${c.reset}`);
     for (const [name, stats] of activeAgents) {
       const rate = ((stats.swears / stats.messages) * 100).toFixed(1);
-      const bar = renderBar(stats.swears, activeAgents[0]?.[1]?.swears ?? 1);
       console.log(
-        `    ${c.cyan}${name.padEnd(10)}${c.reset} ${bar} ${c.bold}${String(stats.swears).padStart(4)}${c.reset} ${c.dim}in ${stats.messages} messages (${rate}%)${c.reset}`,
+        `    ${c.cyan}${name.padEnd(10)}${c.reset} ${c.bold}${String(stats.swears).padStart(4)}${c.reset} ${c.dim}in ${stats.messages} messages (${rate}%)${c.reset}`,
       );
     }
   }
@@ -188,9 +187,4 @@ export async function scan(args: string[]): Promise<void> {
   }
 }
 
-function renderBar(value: number, max: number): string {
-  const width = 12;
-  const filled = Math.round((value / max) * width);
-  const bar = "█".repeat(filled) + "░".repeat(width - filled);
-  return `${c.red}${bar}${c.reset}`;
-}
+
