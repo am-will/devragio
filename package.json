@@ -1,6 +1,6 @@
 {
   "name": "devrage",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Count how many times you swear at your coding agents",
   "type": "module",
   "bin": {
