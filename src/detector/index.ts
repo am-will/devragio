@@ -163,8 +163,28 @@ const WORDLIST: WordDef[] = [
  * e.g. "fuuuuck" → "fuck", "shiiiit" → "shit"
  * This directly normalizes to the root word.
  */
-function collapseRepeats(text: string): string {
-  return text.replace(/(.)\1+/g, "$1");
+interface CollapsedText {
+  text: string;
+  indexMap: number[];
+}
+
+function collapseRepeats(text: string): CollapsedText {
+  let collapsed = "";
+  const indexMap: number[] = [];
+  let previous = "";
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charAt(i);
+    if (char === previous) {
+      continue;
+    }
+
+    collapsed += char;
+    indexMap.push(i);
+    previous = char;
+  }
+
+  return { text: collapsed, indexMap };
 }
 
 /**
@@ -195,38 +215,121 @@ export function detect(text: string): DetectionResult {
   runPattern(text, text.toLowerCase(), matches, seen);
 
   // Pass 2: match on collapsed text to catch repeated chars
-  const collapsed = collapseRepeats(text.toLowerCase());
-  if (collapsed !== text.toLowerCase()) {
-    runPattern(text, collapsed, matches, seen);
+  const lower = text.toLowerCase();
+  const collapsed = collapseRepeats(lower);
+  if (collapsed.text !== lower) {
+    runPattern(text, collapsed.text, matches, seen, collapsed.indexMap);
   }
 
   return { count: matches.length, matches };
 }
 
 function runPattern(
-  _originalText: string,
+  originalText: string,
   searchText: string,
   matches: Match[],
   seen: Set<number>,
+  indexMap?: number[],
+  pattern: RegExp = DEFAULT_PATTERN,
+  wordMap: Map<string, WordDef> = WORD_MAP,
 ): void {
-  DEFAULT_PATTERN.lastIndex = 0;
+  pattern.lastIndex = 0;
 
   let match: RegExpExecArray | null;
-  while ((match = DEFAULT_PATTERN.exec(searchText)) !== null) {
-    if (seen.has(match.index)) continue;
+  while ((match = pattern.exec(searchText)) !== null) {
+    const originalIndex = indexMap?.[match.index] ?? match.index;
+    if (seen.has(originalIndex)) {
+      continue;
+    }
 
     const word = match[0].toLowerCase();
-    const entry = WORD_MAP.get(word);
-    if (!entry) continue;
+    const entry = wordMap.get(word);
+    if (!entry) {
+      continue;
+    }
 
-    seen.add(match.index);
+    seen.add(originalIndex);
+    if (isUrlOrDomainMatch(originalText, originalIndex, match[0].length)) {
+      continue;
+    }
+
     matches.push({
       word,
-      index: match.index,
+      index: originalIndex,
       severity: entry.severity,
       group: entry.group,
     });
   }
+}
+
+const TRAILING_TOKEN_PUNCTUATION = /[>)}\]'",;:!?.]+$/;
+const LEADING_TOKEN_PUNCTUATION = /^[<([{'"`]+/;
+
+function isUrlOrDomainMatch(text: string, matchIndex: number, matchLength: number): boolean {
+  let start = matchIndex;
+  while (start > 0 && !/\s/.test(text.charAt(start - 1))) {
+    start--;
+  }
+
+  let end = matchIndex + matchLength;
+  while (end < text.length && !/\s/.test(text.charAt(end))) {
+    end++;
+  }
+
+  const rawToken = text.slice(start, end);
+  const leadingLength = LEADING_TOKEN_PUNCTUATION.exec(rawToken)?.[0].length ?? 0;
+  const withoutLeading = rawToken.slice(leadingLength);
+  const trailingLength = TRAILING_TOKEN_PUNCTUATION.exec(withoutLeading)?.[0].length ?? 0;
+  const token = withoutLeading.slice(0, withoutLeading.length - trailingLength);
+  const tokenStart = start + leadingLength;
+
+  if (token.length === 0) {
+    return false;
+  }
+
+  const hostRange = domainHostRange(token);
+  if (!hostRange) {
+    return false;
+  }
+
+  const matchStart = matchIndex - tokenStart;
+  const matchEnd = matchStart + matchLength;
+  return matchStart >= hostRange.start && matchEnd <= hostRange.end;
+}
+
+function domainHostRange(token: string): { start: number; end: number } | null {
+  const scheme = /^[a-z][a-z\d+.-]*:\/\//i.exec(token);
+  const authorityStart = scheme?.[0].length ?? 0;
+  const authorityOffset = token.slice(authorityStart).search(/[/?#]/);
+  const authorityEnd =
+    authorityOffset === -1 ? token.length : authorityStart + authorityOffset;
+  const authority = token.slice(authorityStart, authorityEnd);
+  const atIndex = authority.lastIndexOf("@");
+  const hostStart = atIndex === -1 ? authorityStart : authorityStart + atIndex + 1;
+  const hostWithPort = token.slice(hostStart, authorityEnd);
+  const port = /:\d+$/.exec(hostWithPort);
+  const hostEnd = port ? authorityEnd - port[0].length : authorityEnd;
+  const host = token.slice(hostStart, hostEnd);
+
+  if (!isDomainName(host)) {
+    return null;
+  }
+
+  return { start: hostStart, end: hostEnd };
+}
+
+function isDomainName(host: string): boolean {
+  const labels = host.toLowerCase().split(".");
+  if (labels.length < 2) {
+    return false;
+  }
+
+  const tld = labels[labels.length - 1];
+  if (!tld || !/^(?:[a-z]{2,63}|xn--[a-z0-9-]{2,59})$/.test(tld)) {
+    return false;
+  }
+
+  return labels.every((label) => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label));
 }
 
 /**
@@ -244,28 +347,11 @@ export function createDetector(
     const seen = new Set<number>();
 
     const lower = text.toLowerCase();
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(lower)) !== null) {
-      if (seen.has(match.index)) continue;
-      const word = match[0].toLowerCase();
-      const entry = wordMap.get(word);
-      if (!entry) continue;
-      seen.add(match.index);
-      matches.push({ word, index: match.index, severity: entry.severity, group: entry.group });
-    }
+    runPattern(text, lower, matches, seen, undefined, pattern, wordMap);
 
     const collapsed = collapseRepeats(lower);
-    if (collapsed !== lower) {
-      pattern.lastIndex = 0;
-      while ((match = pattern.exec(collapsed)) !== null) {
-        if (seen.has(match.index)) continue;
-        const word = match[0].toLowerCase();
-        const entry = wordMap.get(word);
-        if (!entry) continue;
-        seen.add(match.index);
-        matches.push({ word, index: match.index, severity: entry.severity, group: entry.group });
-      }
+    if (collapsed.text !== lower) {
+      runPattern(text, collapsed.text, matches, seen, collapsed.indexMap, pattern, wordMap);
     }
 
     return { count: matches.length, matches };
