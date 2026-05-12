@@ -338,7 +338,7 @@ export async function scan(args: string[]): Promise<void> {
     }
   }
 
-  // Bordered Ragio footer
+  // Ragio Score footer (top + bottom rules only, no side walls)
   const tier = getTier(totalSwears, totalPolite);
   if (tier) {
     const ratio = ratioStr(totalSwears, totalPolite);
@@ -347,22 +347,20 @@ export async function scan(args: string[]): Promise<void> {
     const inner = `  ${ratioLabel}  ${c.dim}·${c.reset}  ${tierLabel}  `;
     const innerW = visualWidth(inner);
 
-    const heading = ` Ragio `;
+    const heading = ` Ragio Score `;
     const headingVisual = `─${c.bold}${c.magenta}${heading}${c.reset}`;
     const headingW = visualWidth(headingVisual);
-    const innerWidth = Math.max(innerW, headingW + 3);
+    const ruleWidth = Math.max(innerW, headingW + 3);
 
-    const topDashes = "─".repeat(innerWidth - headingW);
-    const top = `${c.magenta}╭${c.reset}${headingVisual}${c.magenta}${topDashes}╮${c.reset}`;
-    const bot = `${c.magenta}╰${"─".repeat(innerWidth)}╯${c.reset}`;
-    const blank = `${c.magenta}│${c.reset}${" ".repeat(innerWidth)}${c.magenta}│${c.reset}`;
-    const mid = `${c.magenta}│${c.reset}${inner}${" ".repeat(innerWidth - innerW)}${c.magenta}│${c.reset}`;
+    const topDashes = "─".repeat(ruleWidth - headingW);
+    const top = `${c.magenta}${headingVisual}${c.magenta}${topDashes}${c.reset}`;
+    const bot = `${c.magenta}${"─".repeat(ruleWidth + 1)}${c.reset}`;
 
     console.log("");
     console.log(`  ${top}`);
-    console.log(`  ${blank}`);
-    console.log(`  ${mid}`);
-    console.log(`  ${blank}`);
+    console.log("");
+    console.log(`  ${inner}`);
+    console.log("");
     console.log(`  ${bot}`);
   }
 
