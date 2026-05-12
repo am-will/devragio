@@ -1,10 +1,30 @@
 {
-  "name": "devrage",
-  "version": "0.0.4",
-  "description": "Count how many times you swear at your coding agents",
+  "name": "devragio",
+  "version": "0.1.0",
+  "description": "Count how many times you swear at — and thank — your coding agents",
+  "keywords": [
+    "cli",
+    "claude",
+    "codex",
+    "coding-agents",
+    "profanity",
+    "politeness",
+    "swears",
+    "transcripts"
+  ],
+  "author": "am-will",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/am-will/devragio.git"
+  },
+  "homepage": "https://github.com/am-will/devragio#readme",
+  "bugs": {
+    "url": "https://github.com/am-will/devragio/issues"
+  },
   "type": "module",
   "bin": {
-    "devrage": "./dist/cli.js"
+    "devragio": "./dist/cli.js"
   },
   "exports": {
     ".": {
@@ -13,7 +33,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "start": "node dist/cli.js",
@@ -26,7 +48,6 @@
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT",
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.1",
